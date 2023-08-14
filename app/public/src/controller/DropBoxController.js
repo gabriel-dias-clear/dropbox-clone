@@ -3,6 +3,8 @@ class DropBoxController {
 
     constructor(){
 
+        this.currentFolder = ['hcode']
+
         this.onselectionchange = new Event('selectionchange');
 
         this.btnSendFileEl = document.querySelector('#btn-send-file');
@@ -51,10 +53,11 @@ class DropBoxController {
         this.getSelection().forEach(li=>{
 
             let file = JSON.parse(li.dataset.file)
+            file = this.getDataType(file)
             let key = li.dataset.key
             let formData = new FormData();
 
-            formData.append('path', file[0].filepath)
+            formData.append('path', file.path)
             formData.append('key', key)
 
             promises.push(this.ajax('/file', 'DELETE', formData));
@@ -70,6 +73,22 @@ class DropBoxController {
     }
 
     initEvents(){
+
+        this.btnNewFolder.addEventListener('click', e => {
+
+            let name = prompt('Nome da nova pasta:');
+
+            if (name) {
+
+                this.getFireBaseRef().push().set({
+                    name,
+                    type: 'folder',
+                    path: this.currentFolder.join('/')
+                });
+
+            }
+
+        });
 
         this.btnDelete.addEventListener('click', e=>{
 
@@ -264,6 +283,41 @@ class DropBoxController {
 
     } 
 
+    getDataType(file){
+        console.log('[getDataType]')
+        let objFile = {
+        }
+        try{
+            if(file[0].hasOwnProperty('mimetype')){
+                //if the file has the property mimetype
+                //this way, then
+                console.log('Analyzing file datatype:');
+                console.log(JSON.stringify(file))
+                objFile.path = file[0].filepath;
+                objFile.type = file[0].mimetype
+                objFile.name = file[0].originalFilename;
+                
+                console.log(JSON.stringify(objFile));
+                return objFile;
+            }
+        }
+        catch(error){
+            if(file.hasOwnProperty('type')){
+                //console.log(ConsoleColors.blue('Analyzing file datatype:'));
+                console.log('.2')
+                console.log(JSON.stringify(file))
+                objFile.type = file.type;
+                objFile.name = file.name;
+                if(file.path){
+                    objFile.path = file.path;
+                }
+                //console.log('Returning objFile data:');
+                //console.log(JSON.stringify(objFile));
+                return objFile
+            }
+        }
+    }
+
     formatTimeForHuman(duration){
 
         let seconds = parseInt((duration/1000) % 60);
@@ -288,8 +342,9 @@ class DropBoxController {
 
     getFileIconView(file){
 
-        
-        switch (file[0].mimetype) {
+        file = this.getDataType(file)
+        console.log(file)
+        switch (file.type) {
 
             case 'folder':
                 return `
@@ -459,15 +514,19 @@ class DropBoxController {
 
     getFileView(file, key){
 
+        file = this.getDataType(file)
+
         let li = document.createElement('li');
 
         li.dataset.key = key;
         li.dataset.file = JSON.stringify(file);
 
+        
+
         li.innerHTML =     
             `
             ${this.getFileIconView(file)}
-            <div class="name text-center">${file[0].originalFilename}</div>
+            <div class="name text-center">${file.type}</div>
 `
 
         this.initEventsLi(li)
