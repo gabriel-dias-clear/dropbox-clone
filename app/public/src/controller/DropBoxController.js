@@ -526,7 +526,7 @@ class DropBoxController {
         li.innerHTML =     
             `
             ${this.getFileIconView(file)}
-            <div class="name text-center">${file.type}</div>
+            <div class="name text-center">${file.name}</div>
 `
 
         this.initEventsLi(li)
