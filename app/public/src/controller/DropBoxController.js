@@ -21,7 +21,7 @@ class DropBoxController {
 
         this.connectFireBase()
         this.initEvents();
-        this.readFiles();
+        this.openFolder();
 
     }
 
@@ -53,7 +53,6 @@ class DropBoxController {
         this.getSelection().forEach(li=>{
 
             let file = JSON.parse(li.dataset.file)
-            file = this.getDataType(file)
             let key = li.dataset.key
             let formData = new FormData();
 
@@ -119,15 +118,17 @@ class DropBoxController {
 
             let file = JSON.parse(li.dataset.file);
 
-            let name = prompt("Renomear o arquivo:", file[0].originalFilename);
+            console.log(file)
+
+            let name = prompt("Renomear o arquivo:", file.name);
 
             if(name){
                 
-                file[0].originalFilename = name;
+                file.name = name;
 
                 this.getFireBaseRef().child(li.dataset.key).set(file);
 
-            }
+            } 
 
         })
 
@@ -194,9 +195,11 @@ class DropBoxController {
         this.btnSendFileEl.disabled = false;
     }
 
-    getFireBaseRef(){
+    getFireBaseRef(path){
 
-        return firebase.database().ref('files')
+        if(!path) path=this.currentFolder.join('/');
+
+        return firebase.database().ref(path)
 
     }
 
@@ -284,38 +287,32 @@ class DropBoxController {
     } 
 
     getDataType(file){
-        console.log('[getDataType]')
+        /*console.log('getting datatype')*/
         let objFile = {
         }
-        try{
-            if(file[0].hasOwnProperty('mimetype')){
-                //if the file has the property mimetype
+       /* console.log('fileee', file) */
+        if(file[0]){
+                //if the file has the property [0]
                 //this way, then
-                console.log('Analyzing file datatype:');
+                // console.log('type: 1')
                 console.log(JSON.stringify(file))
                 objFile.path = file[0].filepath;
                 objFile.type = file[0].mimetype
                 objFile.name = file[0].originalFilename;
-                
-                console.log(JSON.stringify(objFile));
+                //console.log('Returning objFile data:');
+                // console.log(JSON.stringify(objFile));
                 return objFile;
             }
-        }
-        catch(error){
-            if(file.hasOwnProperty('type')){
-                //console.log(ConsoleColors.blue('Analyzing file datatype:'));
-                console.log('.2')
-                console.log(JSON.stringify(file))
+        if(file.type){
+                // console.log('type 2:')
+                // console.log(JSON.stringify(file))
                 objFile.type = file.type;
                 objFile.name = file.name;
                 if(file.path){
-                    objFile.path = file.path;
+                    objFile.path = file.path
                 }
-                //console.log('Returning objFile data:');
-                //console.log(JSON.stringify(objFile));
                 return objFile
             }
-        }
     }
 
     formatTimeForHuman(duration){
@@ -342,8 +339,8 @@ class DropBoxController {
 
     getFileIconView(file){
 
-        file = this.getDataType(file)
         console.log(file)
+        
         switch (file.type) {
 
             case 'folder':
@@ -514,13 +511,13 @@ class DropBoxController {
 
     getFileView(file, key){
 
-        file = this.getDataType(file)
+         file = this.getDataType(file) 
+
 
         let li = document.createElement('li');
 
         li.dataset.key = key;
         li.dataset.file = JSON.stringify(file);
-
         
 
         li.innerHTML =     
@@ -537,16 +534,23 @@ class DropBoxController {
 
     readFiles(){
 
+        this.lastFolder = this.currentFolder.join('/')
+
         this.getFireBaseRef().on('value', snapshot=>{
 
             this.listFilesEl.innerHTML = '';
 
             snapshot.forEach(item=>{
 
+                
                 let key = item.key;
                 let data = item.val();
 
+                 data = this.getDataType(data)
+
+               if(data != undefined){
                 this.listFilesEl.appendChild(this.getFileView(data, key))
+               }
 
             })
 
@@ -554,7 +558,36 @@ class DropBoxController {
 
     }
 
+    openFolder(){
+
+        if(this.lastFolder) this.getFireBaseRef(this.lastFolder).off('value')
+
+        this.readFiles();
+
+    }
+
     initEventsLi(li){
+
+        li.addEventListener('dblclick', e=>{
+
+            let file = JSON.parse(li.dataset.file)
+
+            console.log('file path' + file.path)
+
+            switch(file.type){
+                
+                case 'folder':
+                    this.currentFolder.push(file.name);
+                    this.openFolder();
+                break;
+
+                default:
+                    window.open('/filepath=' + file.path)
+
+
+            }
+
+        })
 
         li.addEventListener('click', e=>{
 
